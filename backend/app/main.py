@@ -1,15 +1,23 @@
 import logging
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.db import engine
+from app.db import engine, init_db
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Closet App API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()  # runs once, before the server accepts requests
+    yield      # the app runs while we're paused here
+    # anything after yield runs on shutdown
+
+
+app = FastAPI(title="Closet App API", lifespan=lifespan)
 
 
 @app.get("/health")
