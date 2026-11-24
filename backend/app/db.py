@@ -1,5 +1,7 @@
 import os
 
+from collections.abc import Iterator
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine, text
 
 DATABASE_URL = os.environ["DATABASE_URL"]
@@ -16,3 +18,9 @@ def init_db() -> None:
     with engine.begin() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         Base.metadata.create_all(conn)
+
+SessionLocal = sessionmaker(bind=engine)
+
+def get_session() -> Iterator[Session]:
+   with SessionLocal() as session:
+        yield session

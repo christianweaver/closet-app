@@ -1,5 +1,6 @@
 import logging
 
+from app.routers import items
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -18,6 +19,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Closet App API", lifespan=lifespan)
+app.include_router(items.router)
 
 
 @app.get("/health")
