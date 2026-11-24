@@ -1,13 +1,17 @@
 import uuid
 from datetime import datetime
 
+from typing import Literal, get_args
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import CheckConstraint, DateTime, Text, func, text
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-CATEGORIES = ("top", "bottom", "shoes", "outerwear", "accessory")
-STATUSES = ("uploading", "processing", "ready", "failed")
+Category = Literal["top", "bottom", "shoes", "outerwear", "accessory"]
+Status = Literal["uploading", "processing", "ready", "failed"]
+
+CATEGORIES = get_args(Category)
+STATUSES = get_args(Status)
 EMBEDDING_DIM = 512  # OpenCLIP ViT-B-32 produces 512-number embeddings
 
 
