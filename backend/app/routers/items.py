@@ -2,7 +2,7 @@ import logging
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,7 @@ from app import storage
 from app.db import get_session
 from app.models import Category, Item
 from app.schemas import ItemCreate, ItemRead, ItemUpdate, UploadUrlRequest, UploadUrlResponse
+from app.services.item_processing import process_item
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,31 @@ def create_upload_url(body: UploadUrlRequest, session: SessionDep):
         expires_in=storage.UPLOAD_URL_EXPIRES_SECONDS,
     )
 
+@router.post(
+    "/{item_id}/process",
+    response_model=ItemRead,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def start_processing(
+    item_id: uuid.UUID, background_tasks: BackgroundTasks, session: SessionDep
+):
+    item = get_item_or_404(session, item_id)
+
+    if item.status in ("processing", "ready"):
+        return item  # already started or done: safe to call again
+
+    if not item.image_key or not storage.object_exists(item.image_key):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Image has not been uploaded yet",
+        )
+
+    item.status = "processing"
+    session.commit()
+    session.refresh(item)
+
+    background_tasks.add_task(process_item, item.id)
+    return item
 
 @router.get("", response_model=list[ItemRead])
 def list_items(

@@ -10,12 +10,19 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import storage
 from app.db import engine, init_db
 from app.ml import tagger
+from app.services.item_processing import recover_stuck_items
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()  
+    recover_stuck_items()
     storage.ensure_bucket()  
     tagger.load_model()
     yield      # the app runs while we're paused here

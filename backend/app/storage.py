@@ -52,3 +52,12 @@ def download_bytes(key: str) -> bytes:
 
 def delete_object(key: str) -> None:
     _internal.delete_object(Bucket=S3_BUCKET, Key=key)
+
+def object_exists(key: str) -> bool:
+    try:
+        _internal.head_object(Bucket=S3_BUCKET, Key=key)
+        return True
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] in ("404", "NoSuchKey", "NotFound"):
+            return False
+        raise
