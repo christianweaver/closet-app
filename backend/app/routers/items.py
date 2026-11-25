@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Annotated
 
@@ -5,9 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import storage
 from app.db import get_session
 from app.models import Category, Item
-from app.schemas import ItemCreate, ItemRead, ItemUpdate
+from app.schemas import ItemCreate, ItemRead, ItemUpdate, UploadUrlRequest, UploadUrlResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -28,6 +32,25 @@ def create_item(body: ItemCreate, session: SessionDep):
     session.commit()
     session.refresh(item)
     return item
+
+@router.post(
+    "/upload-url", response_model=UploadUrlResponse, status_code=status.HTTP_201_CREATED
+)
+def create_upload_url(body: UploadUrlRequest, session: SessionDep):
+    item = Item(status="uploading")
+    session.add(item)
+    session.flush()  # sends the INSERT so the database assigns item.id; not committed yet
+
+    extension = "png" if body.content_type == "image/png" else "jpg"
+    item.image_key = f"items/{item.id}.{extension}"
+    session.commit()
+    session.refresh(item)
+
+    return UploadUrlResponse(
+        item=ItemRead.model_validate(item),
+        upload_url=storage.presigned_upload_url(item.image_key, body.content_type),
+        expires_in=storage.UPLOAD_URL_EXPIRES_SECONDS,
+    )
 
 
 @router.get("", response_model=list[ItemRead])
@@ -64,5 +87,12 @@ def update_item(item_id: uuid.UUID, body: ItemUpdate, session: SessionDep):
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_item(item_id: uuid.UUID, session: SessionDep) -> None:
     item = get_item_or_404(session, item_id)
+    image_key = item.image_key
     session.delete(item)
     session.commit()
+
+    if image_key:
+        try:
+            storage.delete_object(image_key)
+        except Exception:
+            logger.exception("Deleted item %s but failed to delete image %s", item_id, image_key)

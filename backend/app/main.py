@@ -7,13 +7,17 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app import storage
 from app.db import engine, init_db
+from app.ml import tagger
 
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()  # runs once, before the server accepts requests
+    init_db()  
+    storage.ensure_bucket()  
+    tagger.load_model()
     yield      # the app runs while we're paused here
     # anything after yield runs on shutdown
 

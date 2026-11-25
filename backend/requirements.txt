@@ -3,3 +3,5 @@ uvicorn[standard]==0.54.0
 sqlalchemy==2.1.9
 psycopg[binary]==3.3.9
 pgvector==0.5.1
+boto3==1.44.11
+open_clip_torch==4.2.2

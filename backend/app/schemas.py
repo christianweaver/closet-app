@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
+from typing import Literal
 from app.models import Category, Status
 
 
@@ -57,3 +57,14 @@ class OutfitRead(BaseModel):
     item_ids: list[uuid.UUID]
     liked: bool | None
     created_at: datetime
+
+# ---------- Uploads ----------
+
+class UploadUrlRequest(BaseModel):
+    content_type: Literal["image/png", "image/jpeg"]
+
+
+class UploadUrlResponse(BaseModel):
+    item: ItemRead
+    upload_url: str
+    expires_in: int
