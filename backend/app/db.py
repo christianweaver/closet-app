@@ -19,6 +19,11 @@ def init_db() -> None:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         Base.metadata.create_all(conn)
 
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_items_embedding_hnsw"
+            " ON items USING hnsw (embedding vector_cosine_ops)"
+        ))
+
 SessionLocal = sessionmaker(bind=engine)
 
 def get_session() -> Iterator[Session]:

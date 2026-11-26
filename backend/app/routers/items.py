@@ -9,7 +9,10 @@ from sqlalchemy.orm import Session
 from app import storage
 from app.db import get_session
 from app.models import Category, Item
-from app.schemas import ItemCreate, ItemRead, ItemUpdate, UploadUrlRequest, UploadUrlResponse
+from app.schemas import (
+    ItemCreate, ItemRead, ItemUpdate, 
+    UploadUrlRequest, UploadUrlResponse, SimilarItem
+)
 from app.services.item_processing import process_item
 
 logger = logging.getLogger(__name__)
@@ -99,6 +102,39 @@ def list_items(
 @router.get("/{item_id}", response_model=ItemRead)
 def get_item(item_id: uuid.UUID, session: SessionDep):
     return get_item_or_404(session, item_id)
+
+@router.get("/{item_id}/similar", response_model=list[SimilarItem])
+def similar_items(
+    item_id: uuid.UUID,
+    session: SessionDep,
+    category: Category | None = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+):
+    item = get_item_or_404(session, item_id)
+    if item.embedding is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Item has not been processed yet",
+        )
+
+    distance = Item.embedding.cosine_distance(item.embedding).label("distance")
+    stmt = (
+        select(Item, distance)
+        .where(
+            Item.id != item.id,
+            Item.status == "ready",
+            Item.embedding.is_not(None),
+        )
+        .order_by(distance)
+        .limit(limit)
+    )
+    if category is not None:
+        stmt = stmt.where(Item.category == category)
+
+    return [
+        SimilarItem(item=ItemRead.model_validate(row_item), similarity=1 - dist)
+        for row_item, dist in session.execute(stmt).all()
+    ]
 
 @router.patch("/{item_id}", response_model=ItemRead)
 def update_item(item_id: uuid.UUID, body: ItemUpdate, session: SessionDep):

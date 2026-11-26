@@ -42,6 +42,10 @@ class ItemRead(BaseModel):
     status: Status
     created_at: datetime
 
+class SimilarItem(BaseModel):
+    item: ItemRead
+    similarity: float  # 1.0 = identical direction, ~0 = unrelated
+
 
 # ---------- Outfits (used on Day 6) ----------
 
