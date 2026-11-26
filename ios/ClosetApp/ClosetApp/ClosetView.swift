@@ -14,6 +14,9 @@ struct ClosetView: View {
         NavigationStack {
             content
                 .navigationTitle("Closet")
+                .navigationDestination(for: Item.self){
+                    item in ItemDetailView(item: item)
+                }
         }
         .task {
             await model.load()
@@ -61,7 +64,10 @@ struct ClosetGrid: View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(items) { item in
-                    ItemCell(item: item)
+                    NavigationLink(value: item) {
+                        ItemCell(item: item)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding()

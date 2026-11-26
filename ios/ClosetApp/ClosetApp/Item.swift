@@ -26,6 +26,13 @@ struct Item: Codable, Identifiable, Hashable {
     let createdAt: Date
 }
 
+struct SimilarItem: Codable, Identifiable {
+    let item: Item
+    let similarity: Double
+
+    var id: UUID { item.id }
+}
+
 // MARK: - Sample data for previews and Step 5
 
 extension Item {

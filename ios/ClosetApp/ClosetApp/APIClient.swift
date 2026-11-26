@@ -27,6 +27,13 @@ struct APIClient {
             .appending(queryItems: [URLQueryItem(name: "limit", value: "200")])
         return try await get(url)
     }
+    
+    func similarItems(to id: UUID, limit: Int = 10) async throws -> [SimilarItem] {
+        let url = baseURL
+            .appending(path: "items/\(id.uuidString.lowercased())/similar")
+            .appending(queryItems: [URLQueryItem(name: "limit", value: String(limit))])
+        return try await get(url)
+    }
 
     // MARK: - Helpers
 
