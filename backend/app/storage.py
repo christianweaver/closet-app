@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 S3_BUCKET = os.environ["S3_BUCKET"]
 UPLOAD_URL_EXPIRES_SECONDS = 15 * 60
+DOWNLOAD_URL_EXPIRES_SECONDS = 60 * 60
 
 
 def _make_client(endpoint_url: str):
@@ -42,6 +43,14 @@ def presigned_upload_url(key: str, content_type: str) -> str:
         "put_object",
         Params={"Bucket": S3_BUCKET, "Key": key, "ContentType": content_type},
         ExpiresIn=UPLOAD_URL_EXPIRES_SECONDS,
+    )
+
+
+def presigned_download_url(key: str) -> str:
+    return _public.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": S3_BUCKET, "Key": key},
+        ExpiresIn=DOWNLOAD_URL_EXPIRES_SECONDS,
     )
 
 

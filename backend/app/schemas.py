@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 from typing import Literal
+from app import storage
 from app.models import Category, Status
 
 
@@ -41,6 +42,13 @@ class ItemRead(BaseModel):
     style_tags: list[str]
     status: Status
     created_at: datetime
+
+    @computed_field
+    @property
+    def image_url(self) -> str | None:
+        if self.image_key is None or self.status == "uploading":
+            return None
+        return storage.presigned_download_url(self.image_key)
 
 class SimilarItem(BaseModel):
     item: ItemRead
