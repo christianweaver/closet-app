@@ -10,5 +10,5 @@ import Foundation
 enum AppConfig {
     // In the Simulator, localhost is your Mac.
     // A real iPhone needs your Mac's Wi-Fi IP address instead (Step 8).
-    static let apiBaseURL = URL(string: "http://localhost:8000")!
+    static let apiBaseURL = URL(string: "http://192.168.1.177:8000")!
 }
