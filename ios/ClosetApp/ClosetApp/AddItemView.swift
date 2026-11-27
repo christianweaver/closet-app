@@ -14,17 +14,55 @@ struct AddItemView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                content
-                    .frame(maxHeight: .infinity)
-                buttons
+            Group {
+                if case .confirm(let item) = model.phase {
+                    // The editor is a full-screen Form with its own buttons.
+                    TagEditorView(
+                        item: item,
+                        isSaving: model.isSaving,
+                        onSave: { update in
+                            Task { await model.save(update, for: item) }
+                        },
+                        onDiscard: {
+                            Task {
+                                await model.discard(item)
+                                selection = nil
+                            }
+                        }
+                    )
+                } else {
+                    VStack(spacing: 16) {
+                        content
+                            .frame(maxHeight: .infinity)
+                        buttons
+                    }
+                    .padding()
+                }
             }
-            .padding()
-            .navigationTitle("Add")
+            .navigationTitle(title)
             .task(id: selection) {
                 await model.loadPhoto(selection)
             }
+            .alert("Something went wrong", isPresented: saveErrorBinding) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(model.saveError ?? "")
+            }
         }
+    }
+
+    private var title: String {
+        if case .confirm = model.phase { return "Review tags" }
+        return "Add"
+    }
+
+    private var saveErrorBinding: Binding<Bool> {
+        Binding(
+            get: { model.saveError != nil },
+            set: { isPresented in
+                if !isPresented { model.saveError = nil }
+            }
+        )
     }
 
     // MARK: - Content
@@ -56,21 +94,13 @@ struct AddItemView: View {
                     .foregroundStyle(.secondary)
             }
 
-        case .confirm(let item):
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    ItemImage(url: item.imageUrl)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 260)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                    Text(item.category?.rawValue.capitalized ?? "Unknown category")
-                        .font(.title2.bold())
-
-                    TagSection(title: "Colors", tags: item.colors)
-                    TagSection(title: "Style", tags: item.styleTags)
-                }
+        case .saved(let item):
+            ContentUnavailableView {
+                Label("Added to your closet", systemImage: "checkmark.circle.fill")
+            } description: {
+                let category = item.category?.rawValue.capitalized ?? "Item"
+                let colors = item.colors.joined(separator: ", ")
+                Text(colors.isEmpty ? category : "\(category) · \(colors)")
             }
 
         case .failed(let message, _):
@@ -79,6 +109,9 @@ struct AddItemView: View {
                 systemImage: "exclamationmark.triangle",
                 description: Text(message)
             )
+
+        case .confirm:
+            EmptyView()   // handled by TagEditorView in body
         }
     }
 
@@ -87,8 +120,8 @@ struct AddItemView: View {
     @ViewBuilder
     private var buttons: some View {
         switch model.phase {
-        case .working:
-            EmptyView()   // no buttons while busy: nothing can interrupt an upload halfway
+        case .working, .confirm:
+            EmptyView()
 
         case .preview(let prepared):
             primaryButton("Use this photo", systemImage: "arrow.up.circle") {
@@ -102,7 +135,7 @@ struct AddItemView: View {
             }
             picker
 
-        case .confirm:
+        case .saved:
             primaryButton("Add another item", systemImage: "plus") {
                 selection = nil
                 model.reset()

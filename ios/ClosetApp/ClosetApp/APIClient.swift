@@ -28,6 +28,25 @@ struct UploadURLResponse: Decodable {
     let expiresIn: Int
 }
 
+struct ItemUpdate: Encodable {
+    let category: Category?
+    let colors: [String]
+    let styleTags: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case category, colors, styleTags
+    }
+
+    // Written by hand so a nil category is sent as an explicit `"category": null`.
+    // The default encoder would omit the key, which the backend reads as "no change."
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(category, forKey: .category)
+        try container.encode(colors, forKey: .colors)
+        try container.encode(styleTags, forKey: .styleTags)
+    }
+}
+
 struct APIClient {
     let baseURL: URL
 
@@ -69,6 +88,17 @@ struct APIClient {
 
     func startProcessing(id: UUID) async throws -> Item {
         try await send("POST", itemURL(id).appending(path: "process"))
+    }
+    
+    func updateItem(id: UUID, _ update: ItemUpdate) async throws -> Item {
+        try await send("PATCH", itemURL(id), body: update)
+    }
+
+    func deleteItem(id: UUID) async throws {
+        var request = URLRequest(url: itemURL(id))
+        request.httpMethod = "DELETE"
+        let (_, response) = try await URLSession.shared.data(for: request)
+        try Self.check(response)
     }
 
     // MARK: - Helpers

@@ -18,6 +18,7 @@ final class AddItemModel {
         case working(String)
         case preview(UploadImage.Prepared)
         case confirm(Item)
+        case saved(Item)
         case failed(message: String, retry: UploadImage.Prepared?)
     }
 
@@ -39,6 +40,9 @@ final class AddItemModel {
     }
 
     private(set) var phase: Phase = .empty
+    private(set) var isSaving = false
+    var saveError: String?
+
     private let api: APIClient
 
     init(api: APIClient = APIClient(baseURL: AppConfig.apiBaseURL)) {
@@ -54,7 +58,7 @@ final class AddItemModel {
         phase = .empty
     }
 
-    // MARK: - Step 1: photo → cutout → prepared PNG (all on the phone)
+    // MARK: - Photo → cutout → prepared PNG (on the phone)
 
     func loadPhoto(_ selection: PhotosPickerItem?) async {
         guard let selection else { return }
@@ -82,7 +86,7 @@ final class AddItemModel {
         }
     }
 
-    // MARK: - Step 2: upload → process → poll (phone ↔ API ↔ storage)
+    // MARK: - Upload → process → poll (phone ↔ API ↔ storage)
 
     func upload(_ prepared: UploadImage.Prepared) async {
         do {
@@ -112,5 +116,29 @@ final class AddItemModel {
             try await Task.sleep(for: .seconds(1))
         }
         throw Failure.timedOut
+    }
+
+    // MARK: - Confirm: save corrections, or discard
+
+    func save(_ update: ItemUpdate, for item: Item) async {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            let updated = try await api.updateItem(id: item.id, update)
+            phase = .saved(updated)
+        } catch {
+            saveError = error.localizedDescription   // stay on the editor; edits aren't lost
+        }
+    }
+
+    func discard(_ item: Item) async {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            try await api.deleteItem(id: item.id)
+            phase = .empty
+        } catch {
+            saveError = error.localizedDescription
+        }
     }
 }
