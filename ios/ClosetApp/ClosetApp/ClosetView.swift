@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ClosetView: View {
-    @State private var model = ClosetModel()
+    @Environment(ClosetModel.self) private var model
 
     var body: some View {
         NavigationStack {
@@ -77,4 +77,5 @@ struct ClosetGrid: View {
 
 #Preview {
     ClosetView()
+        .environment(ClosetModel())
 }

@@ -36,4 +36,10 @@ final class ClosetModel {
             state = .failed(error.localizedDescription)
         }
     }
+    
+    /// Insert an item the server just confirmed, without refetching the whole list.
+    func add(_ item: Item) {
+        guard case .loaded(let items) = state else { return }
+        state = .loaded([item] + items.filter { $0.id != item.id })
+    }
 }

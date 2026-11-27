@@ -11,6 +11,7 @@ import SwiftUI
 struct AddItemView: View {
     @State private var model = AddItemModel()
     @State private var selection: PhotosPickerItem?
+    @Environment(ClosetModel.self) private var closet
 
     var body: some View {
         NavigationStack {
@@ -21,7 +22,12 @@ struct AddItemView: View {
                         item: item,
                         isSaving: model.isSaving,
                         onSave: { update in
-                            Task { await model.save(update, for: item) }
+                            Task {
+                                await model.save(update, for: item)
+                                if case .saved(let saved) = model.phase {
+                                    closet.add(saved)
+                                }
+                            }
                         },
                         onDiscard: {
                             Task {
@@ -170,4 +176,5 @@ struct AddItemView: View {
 
 #Preview {
     AddItemView()
+        .environment(ClosetModel())
 }
