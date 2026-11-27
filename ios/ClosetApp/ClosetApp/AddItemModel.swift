@@ -69,7 +69,18 @@ final class AddItemModel {
                   let image = UIImage(data: data) else {
                 throw Failure.photoUnreadable
             }
+            try Task.checkCancellation()
+            await processImage(image)
+        } catch is CancellationError {
+            // A newer selection took over.
+        } catch {
+            phase = .failed(message: error.localizedDescription, retry: nil)
+        }
+    }
 
+    /// Shared by the photo library and the camera: cutout → resize → preview.
+    func processImage(_ image: UIImage) async {
+        do {
             phase = .working("Removing background…")
             let cutout = try await BackgroundRemover.removeBackground(from: image)
             try Task.checkCancellation()
@@ -80,7 +91,7 @@ final class AddItemModel {
 
             phase = .preview(prepared)
         } catch is CancellationError {
-            // A newer selection took over.
+            // Superseded by a newer photo.
         } catch {
             phase = .failed(message: error.localizedDescription, retry: nil)
         }

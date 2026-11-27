@@ -11,6 +11,7 @@ import SwiftUI
 struct AddItemView: View {
     @State private var model = AddItemModel()
     @State private var selection: PhotosPickerItem?
+    @State private var showingCamera = false
     @Environment(ClosetModel.self) private var closet
 
     var body: some View {
@@ -53,6 +54,12 @@ struct AddItemView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(model.saveError ?? "")
+            }
+            .fullScreenCover(isPresented: $showingCamera) {
+                CameraPicker { image in
+                    Task { await model.processImage(image) }
+                }
+                .ignoresSafeArea()
             }
         }
     }
@@ -152,6 +159,7 @@ struct AddItemView: View {
         }
     }
 
+    @ViewBuilder
     private var picker: some View {
         PhotosPicker(selection: $selection, matching: .images) {
             Label(model.hasPhoto ? "Choose a different photo" : "Choose a photo",
@@ -160,6 +168,17 @@ struct AddItemView: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.large)
+
+        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            Button {
+                showingCamera = true
+            } label: {
+                Label("Take a photo", systemImage: "camera")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+        }
     }
 
     private func primaryButton(
